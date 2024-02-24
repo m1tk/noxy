@@ -1,0 +1,36 @@
+global:
+  maxconn: 20 # limit max connecions to 20
+  threads: max # use all cpu threads availables
+  health_check: 5000 # do a health check on backends every 5 seconds
+
+defaults:
+  timeout_connect: 10000 # 10 seconds in ms 
+  timeout_client: 30000 # 30 seconds in ms
+  timeout_server: 30000
+  maxconn: 20 # We only have a single frontend, so global maxconn must match frontend's maxconn
+  mode: http
+
+frontend:
+  - name: http_front
+    bind: # all addr:port we want to listen on
+      - addr_port: 0.0.0.0:80
+      - addr_port: 0.0.0.0:443
+        ssl: # we load a certificat for this particular addr:port
+          cert: /app/cert.pem
+          key: /app/key.pem
+          versions: # tls versions allowed
+            - TLSv1.3
+          alpn: # http version negotiation accepted in tls handshake
+            - h2
+            - http/1.1
+    use_backend: http_backend
+    http_condition:
+      - when: "scheme == 'http'" # redirect condition, activated when scheme is http
+        redirect: "sprintf('https://127.0.0.1%s', uri)" # url to redirect to, usually this should be a domain and discouraged to be an ip address
+
+backend:
+  - name: http_backend
+    balance: roundrobin
+    servers: # list of backends, docker auto resolves domain to corresponding ip address
+      - addr_port: webserver1:80
+      - addr_port: webserver2:80

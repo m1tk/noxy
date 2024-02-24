@@ -1,0 +1,64 @@
+global:
+  maxconn: 200
+  threads: max # use all cpu threads availables
+  health_check: 5000 # do a health check on backends every 5 seconds
+
+defaults:
+  timeout_connect: 10000 # 10 seconds in ms 
+  timeout_client: 30000 # 30 seconds in ms
+  timeout_server: 30000
+  maxconn: 200
+  mode: http
+
+frontend:
+  - name: http_front
+    bind: # all addr:port we want to listen on
+      - addr_port: 0.0.0.0:80
+      - addr_port: 0.0.0.0:443
+        ssl: # we load a certificat for this particular addr:port
+          cert: /app/cert.pem
+          key: /app/key.pem
+          versions: # tls versions allowed
+            - TLSv1.3
+          alpn: # http version negotiation accepted in tls handshake
+            - h2
+            - http/1.1
+    use_backend: web_backend
+    http_condition:
+      - when: "scheme == 'http'" # redirect condition, activated when scheme is http
+        redirect: "sprintf('https://%s%s', host, uri)"
+      - when: "host == 'api.noxy.rev'" # switch backend if api is wanted
+        use_backend: api_backend
+
+  - name: admin_front
+    mode: tcp
+    maxconn: 2 # don't allow more than 2 connections, only admin needs to connect
+    timeout_client: 500000 # 500 seconds, due to type of telnet service
+    timeout_server: 500000 # we will have long lived connection with some delays between each input
+    bind:
+      - addr_port: 0.0.0.0:49383
+        ssl:
+          cert: /app/cert.pem
+          key: /app/key.pem
+          ca: /app/ca-cert.pem # certificate authority, used to do client authentication
+          versions: # tls versions allowed
+            - TLSv1.3
+    use_backend: admin_backend
+
+backend:
+  - name: web_backend
+    balance: roundrobin
+    servers: # list of backends, docker auto resolves domain to corresponding ip address
+      - addr_port: webserver1:80
+      - addr_port: webserver2:80
+
+  - name: api_backend
+    balance: roundrobin
+    servers:
+      - addr_port: apiserver1:80
+      - addr_port: apiserver2:80
+
+  - name: admin_backend
+    balance: roundrobin
+    servers:
+      - addr_port: telnetadmin:23

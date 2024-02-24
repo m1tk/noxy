@@ -1,0 +1,10 @@
+FROM docker.io/alpine:latest
+RUN apk update
+RUN apk add busybox-extras
+RUN adduser \
+    --disabled-password \
+    admin_remote
+RUN echo "admin_remote:admin" | chpasswd
+
+ADD run_telnet /opt/bin/
+ENTRYPOINT ["/opt/bin/run_telnet"]

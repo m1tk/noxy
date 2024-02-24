@@ -1,0 +1,81 @@
+version: "3"
+services:
+  noxy:
+    build:
+      context: .
+      dockerfile: NoxyDockerfile
+    container_name: noxy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "49383:49383"
+    volumes:
+      - type: bind
+        source: ./complex.yaml
+        target: /app/conf.yaml
+      - type: bind
+        source: ./ssl_cert/cert.pem
+        target: /app/cert.pem
+      - type: bind
+        source: ./ssl_cert/key.pem
+        target: /app/key.pem
+      - type: bind
+        source: ./ssl_cert/ca-cert.pem
+        target: /app/ca-cert.pem
+    environment:
+      - "org.apache.logging.log4j.level=DEBUG"
+    networks:
+      - back_network
+      - api_network
+      - admin_network
+
+  webserver1:
+    image: docker.io/nginx
+    container_name: webserver1
+    volumes:
+      - ./content_1/:/usr/share/nginx/html
+    networks:
+      - back_network
+
+  webserver2:
+    image: docker.io/nginx
+    container_name: webserver2
+    volumes:
+      - ./content_2/:/usr/share/nginx/html
+    networks:
+      - back_network
+
+  apiserver1:
+    image: docker.io/nginx
+    container_name: apiserver1
+    volumes:
+      - ./api_1/:/usr/share/nginx/html
+      - type: bind
+        source: nginx.conf
+        target: /etc/nginx/conf.d/default.conf
+    networks:
+      - api_network
+
+  apiserver2:
+    image: docker.io/nginx
+    container_name: apiserver2
+    volumes:
+      - ./api_2/:/usr/share/nginx/html
+      - type: bind
+        source: nginx.conf
+        target: /etc/nginx/conf.d/default.conf
+    networks:
+      - api_network
+
+  telnetadmin:
+    build:
+      context: .
+      dockerfile: TelnetDockerfile
+    container_name: telnetadmin
+    networks:
+      - admin_network
+
+networks:
+  back_network: {}
+  api_network: {}
+  admin_network: {}

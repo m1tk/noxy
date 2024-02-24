@@ -1,0 +1,4 @@
+#!/bin/sh
+
+telnetd
+tail -f /dev/null

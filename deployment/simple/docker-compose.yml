@@ -1,0 +1,43 @@
+version: "3"
+services:
+  noxy:
+    build:
+      context: .
+      dockerfile: NoxyDockerfile
+    container_name: noxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - type: bind
+        source: ./simple.yaml
+        target: /app/conf.yaml
+      - type: bind
+        source: ./ssl_cert/cert.pem
+        target: /app/cert.pem
+      - type: bind
+        source: ./ssl_cert/key.pem
+        target: /app/key.pem
+    environment:
+      - "org.apache.logging.log4j.level=INFO"
+    networks:
+      - back_network
+
+  webserver1:
+    image: docker.io/nginx
+    container_name: webserver1
+    volumes:
+      - ./content_1/:/usr/share/nginx/html
+    networks:
+      - back_network
+
+  webserver2:
+    image: docker.io/nginx
+    container_name: webserver2
+    volumes:
+      - ./content_2/:/usr/share/nginx/html
+    networks:
+      - back_network
+
+networks:
+  back_network: {}
